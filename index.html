@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MarketPulse — E-Commerce Analytics Dashboard</title>
+  <meta name="description" content="Interactive e-commerce analytics platform analyzing 8,742+ customer records, conversion funnels, ROAS, CAC, and multi-channel marketing performance." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ====================================================
+       DESIGN TOKENS
+    ==================================================== */
+    :root {
+      --bg:        #07091a;
+      --bg2:       #0c1028;
+      --card:      #101530;
+      --card2:     #141a3a;
+      --border:    rgba(255,255,255,0.07);
+      --border-p:  rgba(139,92,246,0.28);
+
+      --purple:    #8b5cf6;
+      --purple-l:  #a78bfa;
+      --purple-d:  #6d28d9;
+      --cyan:      #22d3ee;
+      --teal:      #06d6a0;
+      --amber:     #f59e0b;
+      --rose:      #f43f5e;
+      --sky:       #38bdf8;
+      --orange:    #f97316;
+
+      --t1: #f1f5f9;
+      --t2: #94a3b8;
+      --t3: #475569;
+
+      --sidebar-w: 244px;
+      --topbar-h:  68px;
+      --shadow:    0 6px 32px rgba(0,0,0,0.45);
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--t1);
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Ambient glow */
+    body::before {
+      content:'';
+      position:fixed;
+      width:700px; height:700px;
+      background: radial-gradient(circle, rgba(139,92,246,0.07) 0%, transparent 65%);
+      top:-250px; right:-250px;
+      pointer-events:none; z-index:0;
+    }
+    body::after {
+      content:'';
+      position:fixed;
+      width:500px; height:500px;
+      background: radial-gradient(circle, rgba(6,214,160,0.05) 0%, transparent 65%);
+      bottom:-150px; left:300px;
+      pointer-events:none; z-index:0;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.35); border-radius:3px; }
+
+    /* ====================================================
+       LOADING BAR
+    ==================================================== */
+    #loadingBar {
+      position:fixed; top:0; left:0; right:0; height:3px;
+      background: linear-gradient(90deg,var(--purple),var(--cyan),var(--teal));
+      z-index:9999;
+      animation: loadBar 1s ease forwards;
+    }
+    @keyframes loadBar {
+      from { transform:scaleX(0); transform-origin:left; }
+      to   { transform:scaleX(1); transform-origin:left; }
+    }
+
+    /* ====================================================
+       SIDEBAR
+    ==================================================== */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top:0; left:0;
+      height: 100vh;
+      z-index: 100;
+    }
+
+    .sidebar-logo {
+      padding: 22px 18px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .logo-row { display:flex; align-items:center; gap:11px; }
+    .logo-icon {
+      width:38px; height:38px;
+      background: linear-gradient(135deg,var(--purple),var(--cyan));
+      border-radius:10px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:17px;
+      box-shadow: 0 0 18px rgba(139,92,246,0.35);
+      flex-shrink:0;
+    }
+    .logo-brand { font-size:14px; font-weight:800; letter-spacing:0.3px; }
+    .logo-sub   { font-size:10px; color:var(--t2); text-transform:uppercase; letter-spacing:1.2px; }
+
+    .sidebar-nav {
+      flex:1;
+      padding: 14px 10px;
+      display:flex; flex-direction:column; gap:3px;
+      overflow-y:auto;
+    }
+    .nav-label {
+      font-size:10px; font-weight:700; color:var(--t3);
+      text-transform:uppercase; letter-spacing:1.6px;
+      padding: 12px 10px 5px;
+    }
+    .nav-item {
+      display:flex; align-items:center; gap:11px;
+      padding: 10px 12px;
+      border-radius:9px;
+      cursor:pointer;
+      color: var(--t2);
+      font-size:13px; font-weight:500;
+      border:1px solid transparent;
+      transition: all .2s ease;
+      user-select:none;
+    }
+    .nav-item:hover {
+      background: rgba(139,92,246,0.08);
+      color: var(--t1);
+    }
+    .nav-item.active {
+      background: rgba(139,92,246,0.14);
+      color: var(--purple-l);
+      border-color: var(--border-p);
+    }
+    .nav-icon { width:18px; text-align:center; font-size:15px; flex-shrink:0; }
+    .nav-badge {
+      margin-left:auto;
+      background: var(--teal);
+      color:#000;
+      font-size:10px; font-weight:800;
+      padding:2px 7px;
+      border-radius:20px;
+    }
+
+    .sidebar-footer {
+      padding:16px;
+      border-top:1px solid var(--border);
+      flex-shrink:0;
+    }
+    .data-pill {
+      background: rgba(6,214,160,0.08);
+      border:1px solid rgba(6,214,160,0.18);
+      border-radius:9px;
+      padding:12px 13px;
+    }
+    .data-pill .dp-label { font-size:10px; color:var(--teal); font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+    .data-pill .dp-val   { font-size:13px; font-weight:700; color:var(--t1); margin-top:3px; }
+    .data-pill .dp-sub   { font-size:11px; color:var(--t2); margin-top:2px; }
+
+    /* pulse dot */
+    .pulse { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--teal); position:relative; }
+    .pulse::after {
+      content:'';
+      position:absolute; inset:0;
+      border-radius:50%; background:var(--teal);
+      animation: pulseRing 2s ease infinite;
+    }
+    @keyframes pulseRing {
+      0%   { transform:scale(1); opacity:.7; }
+      100% { transform:scale(2.6); opacity:0; }
+    }
+
+    /* ====================================================
+       MAIN CONTENT
+    ==================================================== */
+    .main {
+      margin-left: var(--sidebar-w);
+      flex:1;
+      display:flex; flex-direction:column;
+      min-height:100vh;
+      position:relative; z-index:1;
+    }
+
+    /* ====================================================
+       TOPBAR
+    ==================================================== */
+    .topbar {
+      height: var(--topbar-h);
+      background: rgba(12,16,40,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 0 26px;
+      position:sticky; top:0; z-index:50;
+      flex-shrink:0;
+    }
+    .tb-title  { font-size:17px; font-weight:800; }
+    .tb-sub    { font-size:12px; color:var(--t2); margin-top:2px; }
+
+    .tb-right  { display:flex; align-items:center; gap:10px; }
+    .filter-btn {
+      display:flex; align-items:center; gap:7px;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:7px 13px;
+      color:var(--t2); font-size:12.5px;
+      cursor:pointer;
+      transition:all .2s;
+      font-family:'Inter',sans-serif;
+    }
+    .filter-btn:hover { border-color:var(--border-p); color:var(--t1); }
+    .filter-btn.active {
+      background: rgba(139,92,246,0.12);
+      border-color: var(--border-p);
+      color: var(--purple-l);
+    }
+    .export-btn {
+      display:flex; align-items:center; gap:7px;
+      background: linear-gradient(135deg,var(--purple),var(--purple-d));
+      border:none;
+      border-radius:8px;
+      padding:8px 16px;
+      color:#fff; font-size:13px; font-weight:700;
+      cursor:pointer;
+      font-family:'Inter',sans-serif;
+      box-shadow:0 0 18px rgba(139,92,246,0.3);
+      transition:all .2s;
+    }
+    .export-btn:hover { transform:translateY(-1px); box-shadow:0 4px 24px rgba(139,92,246,0.45); }
+
+    /* ====================================================
+       PAGES
+    ==================================================== */
+    .page { display:none; padding:24px 26px; animation:fadeUp .32s ease; }
+    .page.active { display:block; }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(10px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* ====================================================
+       KPI CARDS
+    ==================================================== */
+    .kpi-grid {
+      display:grid;
+      grid-template-columns: repeat(3,1fr);
+      gap:15px;
+      margin-bottom:22px;
+    }
+    .kpi-grid-4 { grid-template-columns: repeat(4,1fr); }
+
+    .kpi-card {
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:13px;
+      padding:18px 20px;
+      position:relative; overflow:hidden;
+      transition:all .3s ease;
+      cursor:default;
+    }
+    .kpi-card::before {
+      content:'';
+      position:absolute; top:0; left:0; right:0; height:2.5px;
+      background: var(--kpi-grad, linear-gradient(90deg,var(--purple),var(--cyan)));
+    }
+    .kpi-card:hover { border-color:var(--border-p); transform:translateY(-2px); box-shadow:var(--shadow); }
+
+    .kpi-card.c-purple { --kpi-grad: linear-gradient(90deg,#8b5cf6,#22d3ee); }
+    .kpi-card.c-teal   { --kpi-grad: linear-gradient(90deg,#06d6a0,#22d3ee); }
+    .kpi-card.c-amber  { --kpi-grad: linear-gradient(90deg,#f59e0b,#f97316); }
+    .kpi-card.c-rose   { --kpi-grad: linear-gradient(90deg,#f43f5e,#e11d48); }
+    .kpi-card.c-sky    { --kpi-grad: linear-gradient(90deg,#38bdf8,#0ea5e9); }
+    .kpi-card.c-green  { --kpi-grad: linear-gradient(90deg,#06d6a0,#10b981); }
+
+    .kpi-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:13px; }
+    .kpi-icon {
+      width:40px; height:40px; border-radius:10px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:18px;
+      background: rgba(139,92,246,0.12);
+    }
+    .kpi-card.c-teal  .kpi-icon { background:rgba(6,214,160,0.1); }
+    .kpi-card.c-amber .kpi-icon { background:rgba(245,158,11,0.1); }
+    .kpi-card.c-rose  .kpi-icon { background:rgba(244,63,94,0.1); }
+    .kpi-card.c-sky   .kpi-icon { background:rgba(56,189,248,0.1); }
+    .kpi-card.c-green .kpi-icon { background:rgba(6,214,160,0.1); }
+
+    .kpi-change {
+      display:flex; align-items:center;
+      font-size:11.5px; font-weight:700;
+      padding:3px 8px; border-radius:20px;
+    }
+    .kpi-change.up   { background:rgba(6,214,160,0.1); color:var(--teal); }
+    .kpi-change.down { background:rgba(244,63,94,0.1); color:var(--rose); }
+
+    .kpi-val  { font-size:27px; font-weight:900; letter-spacing:-0.5px; line-height:1; }
+    .kpi-lbl  { font-size:12px; color:var(--t2); margin-top:5px; font-weight:500; }
+    .kpi-sub  { font-size:11px; color:var(--t3); margin-top:3px; }
+
+    /* ====================================================
+       CHART CARDS
+    ==================================================== */
+    .chart-card {
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:13px;
+      padding:20px 22px;
+      transition:border-color .3s;
+    }
+    .chart-card:hover { border-color:rgba(139,92,246,0.18); }
+
+    .ch-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:18px; }
+    .ch-title  { font-size:14px; font-weight:700; }
+    .ch-sub    { font-size:12px; color:var(--t2); margin-top:3px; }
+
+    .ch-badge {
+      font-size:11px; font-weight:700;
+      padding:4px 10px; border-radius:20px;
+      white-space:nowrap; flex-shrink:0; margin-left:10px;
+    }
+    .ch-badge.purple { background:rgba(139,92,246,0.12); color:var(--purple-l); border:1px solid rgba(139,92,246,0.2); }
+    .ch-badge.teal   { background:rgba(6,214,160,0.1);   color:var(--teal);     border:1px solid rgba(6,214,160,0.2); }
+    .ch-badge.amber  { background:rgba(245,158,11,0.1);   color:var(--amber);    border:1px solid rgba(245,158,11,0.2); }
+    .ch-badge.rose   { background:rgba(244,63,94,0.1);    color:var(--rose);     border:1px solid rgba(244,63,94,0.2); }
+    .ch-badge.sky    { background:rgba(56,189,248,0.1);   color:var(--sky);      border:1px solid rgba(56,189,248,0.2); }
+
+    .ch-body   { position:relative; }
+    .ch-wrap   { position:relative; height:260px; }
+    .ch-wrap.tall  { height:320px; }
+    .ch-wrap.short { height:200px; }
+
+    /* Grid layouts */
+    .row  { display:grid; gap:18px; margin-bottom:18px; }
+    .c2   { grid-template-columns:1fr 1fr; }
+    .c3   { grid-template-columns:1fr 1fr 1fr; }
+    .c7-5 { grid-template-columns:7fr 5fr; }
+    .c5-7 { grid-template-columns:5fr 7fr; }
+
+    /* ====================================================
+       DATA TABLE
+    ==================================================== */
+    .dtable { width:100%; border-collapse:collapse; }
+    .dtable thead tr { background:rgba(255,255,255,0.025); }
+    .dtable th {
+      text-align:left;
+      font-size:11px; font-weight:700; color:var(--t3);
+      text-transform:uppercase; letter-spacing:.8px;
+      padding:9px 12px;
+      border-bottom:1px solid var(--border);
+    }
+    .dtable td {
+      padding:10px 12px;
+      font-size:13px; color:var(--t2);
+      border-bottom:1px solid rgba(255,255,255,0.03);
+    }
+    .dtable tr:last-child td { border-bottom:none; }
+    .dtable tr:hover td { background:rgba(139,92,246,0.04); color:var(--t1); }
+    .dtable td:first-child { color:var(--t1); font-weight:500; }
+
+    .tbadge {
+      display:inline-flex; align-items:center;
+      font-size:11px; font-weight:700;
+      padding:3px 8px; border-radius:20px;
+    }
+
+    /* ====================================================
+       FUNNEL VISUALIZATION
+    ==================================================== */
+    #funnelViz {
+      display:flex; flex-direction:column;
+      align-items:stretch; gap:0;
+      padding:4px 0;
+    }
+    .f-stage { display:flex; align-items:center; gap:14px; }
+    .f-meta  { width:108px; flex-shrink:0; }
+    .f-meta-r { width:100px; flex-shrink:0; text-align:right; }
+    .f-val   { font-size:14px; font-weight:800; color:var(--t1); }
+    .f-lbl   { font-size:11px; color:var(--t2); margin-top:1px; }
+    .f-conv  { font-size:11px; font-weight:700; margin-top:2px; }
+
+    .f-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; }
+    .f-bar {
+      height:50px; border-radius:9px;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer;
+      transition:filter .2s;
+      min-width:70px;
+    }
+    .f-bar:hover { filter:brightness(1.18); }
+    .f-bar-text { font-size:13px; font-weight:800; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,0.4); }
+    .f-connector { width:2px; height:14px; background:var(--border); }
+
+    /* ====================================================
+       PROGRESS BARS
+    ==================================================== */
+    .pb-wrap { margin-bottom:14px; }
+    .pb-row  { display:flex; justify-content:space-between; margin-bottom:5px; font-size:12px; }
+    .pb-track { height:7px; background:rgba(255,255,255,0.06); border-radius:10px; overflow:hidden; }
+    .pb-fill  { height:100%; border-radius:10px; transition:width 1.2s cubic-bezier(.22,1,.36,1); }
+
+    /* ====================================================
+       STAT ROWS
+    ==================================================== */
+    .stat-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+    .stat-row:last-child { border-bottom:none; }
+    .stat-label { font-size:13px; color:var(--t2); }
+    .stat-value { font-size:14px; font-weight:800; color:var(--t1); }
+
+    /* Divider */
+    .divider { display:flex; align-items:center; gap:12px; margin:20px 0 16px; }
+    .divider span { font-size:12px; font-weight:700; color:var(--t2); white-space:nowrap; }
+    .divider-line { flex:1; height:1px; background:var(--border); }
+
+    /* ====================================================
+       SEGMENT GRID (RFM)
+    ==================================================== */
+    .seg-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .seg-card {
+      background:rgba(255,255,255,0.025);
+      border:1px solid var(--border);
+      border-radius:11px;
+      padding:14px 16px;
+      text-align:center;
+      transition:all .3s;
+      cursor:default;
+    }
+    .seg-card:hover { border-color:var(--border-p); background:rgba(139,92,246,0.06); transform:translateY(-2px); }
+    .seg-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-bottom:7px; }
+    .seg-name  { font-size:12px; font-weight:700; color:var(--t1); }
+    .seg-count { font-size:22px; font-weight:900; margin:5px 0 3px; }
+    .seg-aov   { font-size:11px; color:var(--t2); }
+    .seg-bar-track { height:4px; background:rgba(255,255,255,0.06); border-radius:10px; overflow:hidden; margin-top:10px; }
+    .seg-bar-fill  { height:100%; border-radius:10px; }
+
+    /* ====================================================
+       INSIGHTS PAGE
+    ==================================================== */
+    .ins-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:15px; margin-bottom:22px; }
+    .ins-card {
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:18px 20px;
+      transition:all .3s ease;
+      cursor:default;
+    }
+    .ins-card:hover { transform:translateY(-2px); box-shadow:var(--shadow); }
+    .ins-num {
+      width:28px; height:28px;
+      background:rgba(139,92,246,0.12);
+      border:1px solid rgba(139,92,246,0.25);
+      border-radius:8px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:12px; font-weight:800; color:var(--purple-l);
+      margin-bottom:12px;
+    }
+    .ins-title { font-size:13.5px; font-weight:800; color:var(--t1); margin-bottom:8px; }
+    .ins-text  { font-size:12px; color:var(--t2); line-height:1.65; }
+    .ins-impact { margin-top:12px; font-size:11.5px; font-weight:700; color:var(--teal); }
+  </style>
+</head>
+<body>
+<div id="loadingBar"></div>
+
+<!-- ====================================================
+     SIDEBAR
+==================================================== -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-row">
+      <div class="logo-icon">📊</div>
+      <div>
+        <div class="logo-brand">MarketPulse</div>
+        <div class="logo-sub">Analytics Platform</div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <span class="nav-label">Dashboard</span>
+    <div class="nav-item active" id="nav-overview" onclick="navigate('overview')">
+      <span class="nav-icon">🏠</span> Overview
+      <span class="nav-badge">Live</span>
+    </div>
+
+    <span class="nav-label">Analytics</span>
+    <div class="nav-item" id="nav-customer" onclick="navigate('customer')">
+      <span class="nav-icon">👥</span> Customer Analytics
+    </div>
+    <div class="nav-item" id="nav-marketing" onclick="navigate('marketing')">
+      <span class="nav-icon">📈</span> Marketing Analytics
+    </div>
+    <div class="nav-item" id="nav-funnel" onclick="navigate('funnel')">
+      <span class="nav-icon">🔽</span> Conversion Funnel
+    </div>
+
+    <span class="nav-label">Intelligence</span>
+    <div class="nav-item" id="nav-insights" onclick="navigate('insights')">
+      <span class="nav-icon">💡</span> Recommendations
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="data-pill">
+      <div class="dp-label"><span class="pulse" style="margin-right:6px;"></span>Data Period</div>
+      <div class="dp-val">Jan – Sep 2024</div>
+      <div class="dp-sub">8,742 customers · 12,847 orders</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ====================================================
+     MAIN
+==================================================== -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div>
+      <div class="tb-title" id="pageTitle">Business Overview</div>
+      <div class="tb-sub" id="pageSub">E-commerce performance across all channels · Jan–Sep 2024</div>
+    </div>
+    <div class="tb-right">
+      <button class="filter-btn active" onclick="setFilter(this)">📅 All Time</button>
+      <button class="filter-btn" onclick="setFilter(this)">Q1 2024</button>
+      <button class="filter-btn" onclick="setFilter(this)">Q2 2024</button>
+      <button class="filter-btn" onclick="setFilter(this)">Q3 2024</button>
+      <button class="export-btn" onclick="exportReport()">⬇ Export Report</button>
+    </div>
+  </header>
+
+  <!-- ======================================================
+       PAGE: OVERVIEW
+  ====================================================== -->
+  <div class="page active" id="page-overview">
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card c-purple">
+        <div class="kpi-top">
+          <div class="kpi-icon">💰</div>
+          <span class="kpi-change up">↑ 23.4%</span>
+        </div>
+        <div class="kpi-val" id="kv-revenue">$0</div>
+        <div class="kpi-lbl">Total Revenue</div>
+        <div class="kpi-sub">vs $2.31M prev. period</div>
+      </div>
+      <div class="kpi-card c-teal">
+        <div class="kpi-top">
+          <div class="kpi-icon">👥</div>
+          <span class="kpi-change up">↑ 18.7%</span>
+        </div>
+        <div class="kpi-val" id="kv-customers">0</div>
+        <div class="kpi-lbl">Total Customers</div>
+        <div class="kpi-sub">3,142 new · 5,600 returning</div>
+      </div>
+      <div class="kpi-card c-sky">
+        <div class="kpi-top">
+          <div class="kpi-icon">🛒</div>
+          <span class="kpi-change up">↑ 12.1%</span>
+        </div>
+        <div class="kpi-val" id="kv-orders">0</div>
+        <div class="kpi-lbl">Total Orders</div>
+        <div class="kpi-sub">Avg 1,427 orders/month</div>
+      </div>
+      <div class="kpi-card c-amber">
+        <div class="kpi-top">
+          <div class="kpi-icon">📦</div>
+          <span class="kpi-change up">↑ 9.2%</span>
+        </div>
+        <div class="kpi-val" id="kv-aov">$0</div>
+        <div class="kpi-lbl">Avg Order Value</div>
+        <div class="kpi-sub">vs $203.00 prev. period</div>
+      </div>
+      <div class="kpi-card c-rose">
+        <div class="kpi-top">
+          <div class="kpi-icon">🎯</div>
+          <span class="kpi-change up">↑ 0.6pp</span>
+        </div>
+        <div class="kpi-val" id="kv-conv">0%</div>
+        <div class="kpi-lbl">Conversion Rate</div>
+        <div class="kpi-sub">vs 3.2% prev. period</div>
+      </div>
+      <div class="kpi-card c-green">
+        <div class="kpi-top">
+          <div class="kpi-icon">🔄</div>
+          <span class="kpi-change up">↑ 5.8pp</span>
+        </div>
+        <div class="kpi-val" id="kv-retention">0%</div>
+        <div class="kpi-lbl">Retention Rate</div>
+        <div class="kpi-sub">vs 60.7% prev. period</div>
+      </div>
+    </div>
+
+    <!-- Row 1 -->
+    <div class="row c7-5">
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Monthly Revenue & Order Trend</div><div class="ch-sub">Revenue ($) and order volume · Jan–Sep 2024</div></div>
+          <span class="ch-badge purple">+23.4% YoY</span>
+        </div>
+        <div class="ch-wrap"><canvas id="c-revenue"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Revenue by Channel</div><div class="ch-sub">Channel contribution breakdown</div></div>
+          <span class="ch-badge teal">5 Channels</span>
+        </div>
+        <div class="ch-wrap"><canvas id="c-channel-donut"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="row c5-7">
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Top Campaigns</div><div class="ch-sub">Performance by campaign</div></div>
+        </div>
+        <table class="dtable">
+          <thead><tr><th>Campaign</th><th>Revenue</th><th>Conv%</th><th>vs LY</th></tr></thead>
+          <tbody>
+            <tr><td>🏆 Loyalty Program</td><td>$827K</td><td><span class="tbadge" style="background:rgba(6,214,160,.1);color:var(--teal)">6.2%</span></td><td style="color:var(--teal)">▲ 42%</td></tr>
+            <tr><td>☀️ Summer Sale</td><td>$634K</td><td><span class="tbadge" style="background:rgba(56,189,248,.1);color:var(--sky)">4.2%</span></td><td style="color:var(--teal)">▲ 18%</td></tr>
+            <tr><td>🖤 Black Friday</td><td>$589K</td><td><span class="tbadge" style="background:rgba(139,92,246,.1);color:var(--purple-l)">5.8%</span></td><td style="color:var(--teal)">▲ 31%</td></tr>
+            <tr><td>🌸 Spring Launch</td><td>$312K</td><td><span class="tbadge" style="background:rgba(245,158,11,.1);color:var(--amber)">3.1%</span></td><td style="color:var(--rose)">▼ 5%</td></tr>
+            <tr><td>🎒 Back to School</td><td>$287K</td><td><span class="tbadge" style="background:rgba(245,158,11,.1);color:var(--amber)">3.9%</span></td><td style="color:var(--teal)">▲ 11%</td></tr>
+            <tr><td>🎉 New Year</td><td>$198K</td><td><span class="tbadge" style="background:rgba(244,63,94,.1);color:var(--rose)">2.8%</span></td><td style="color:var(--rose)">▼ 8%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Revenue by Product Category</div><div class="ch-sub">Sales distribution · 5 categories</div></div>
+          <span class="ch-badge amber">5 Categories</span>
+        </div>
+        <div class="ch-wrap"><canvas id="c-category"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================
+       PAGE: CUSTOMER ANALYTICS
+  ====================================================== -->
+  <div class="page" id="page-customer">
+    <div class="kpi-grid kpi-grid-4">
+      <div class="kpi-card c-purple">
+        <div class="kpi-top"><div class="kpi-icon">🆕</div><span class="kpi-change up">↑ 14%</span></div>
+        <div class="kpi-val">3,142</div><div class="kpi-lbl">New Customers</div>
+      </div>
+      <div class="kpi-card c-teal">
+        <div class="kpi-top"><div class="kpi-icon">🔄</div><span class="kpi-change up">↑ 21%</span></div>
+        <div class="kpi-val">5,600</div><div class="kpi-lbl">Returning Customers</div>
+      </div>
+      <div class="kpi-card c-amber">
+        <div class="kpi-top"><div class="kpi-icon">💳</div><span class="kpi-change up">↑ 9.2%</span></div>
+        <div class="kpi-val">$221.64</div><div class="kpi-lbl">Avg Order Value</div><div class="kpi-sub">$387 for Champions segment</div>
+      </div>
+      <div class="kpi-card c-sky">
+        <div class="kpi-top"><div class="kpi-icon">🔁</div><span class="kpi-change up">↑ 0.4</span></div>
+        <div class="kpi-val">1.47×</div><div class="kpi-lbl">Purchase Frequency</div><div class="kpi-sub">2.9× for Champions</div>
+      </div>
+    </div>
+
+    <div class="row c2">
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">New vs. Returning Customers</div><div class="ch-sub">Customer base composition · 8,742 total</div></div>
+          <span class="ch-badge teal">64.1% Retention</span>
+        </div>
+        <div class="ch-wrap"><canvas id="c-nvr"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Purchase Frequency Distribution</div><div class="ch-sub">Orders per customer segmentation</div></div>
+          <span class="ch-badge purple">Avg 1.47×</span>
+        </div>
+        <div class="ch-wrap"><canvas id="c-freq"></canvas></div>
+      </div>
+    </div>
+
+    <div class="row c7-5">
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Average Order Value — Monthly Trend</div><div class="ch-sub">AOV across Jan–Sep 2024</div></div>
+          <span class="ch-badge amber">+9.2% YoY</span>
+        </div>
+        <div class="ch-wrap"><canvas id="c-aov"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">AOV by Customer Segment</div><div class="ch-sub">Average spend per RFM segment</div></div>
+        </div>
+        <div class="ch-wrap"><canvas id="c-seg-aov"></canvas></div>
+      </div>
+    </div>
+
+    <!-- RFM Segment Cards -->
+    <div class="chart-card">
+      <div class="ch-header">
+        <div><div class="ch-title">RFM Customer Segmentation</div><div class="ch-sub">Recency · Frequency · Monetary analysis — 6 segments identified from 8,742 customers</div></div>
+        <span class="ch-badge purple">8,742 Customers</span>
+      </div>
+      <div class="seg-grid">
+        <div class="seg-card"><span class="seg-dot" style="background:#8b5cf6"></span><div class="seg-name">Champions</div><div class="seg-count" style="color:#8b5cf6">1,245</div><div class="seg-aov">AOV $387 · High RFM score</div><div class="seg-bar-track"><div class="seg-bar-fill" style="width:100%;background:#8b5cf6"></div></div></div>
+        <div class="seg-card"><span class="seg-dot" style="background:#06d6a0"></span><div class="seg-name">Loyal Customers</div><div class="seg-count" style="color:#06d6a0">2,134</div><div class="seg-aov">AOV $245 · Frequent buyers</div><div class="seg-bar-track"><div class="seg-bar-fill" style="width:83%;background:#06d6a0"></div></div></div>
+        <div class="seg-card"><span class="seg-dot" style="background:#38bdf8"></span><div class="seg-name">Potential Loyalists</div><div class="seg-count" style="color:#38bdf8">1,876</div><div class="seg-aov">AOV $178 · Growing spend</div><div class="seg-bar-track"><div class="seg-bar-fill" style="width:66%;background:#38bdf8"></div></div></div>
+        <div class="seg-card"><span class="seg-dot" style="background:#f59e0b"></span><div class="seg-name">New Customers</div><div class="seg-count" style="color:#f59e0b">1,877</div><div class="seg-aov">AOV $156 · First-time buyers</div><div class="seg-bar-track"><div class="seg-bar-fill" style="width:54%;background:#f59e0b"></div></div></div>
+        <div class="seg-card"><span class="seg-dot" style="background:#f43f5e"></span><div class="seg-name">At-Risk</div><div class="seg-count" style="color:#f43f5e">987</div><div class="seg-aov">AOV $134 · Declining activity</div><div class="seg-bar-track"><div class="seg-bar-fill" style="width:38%;background:#f43f5e"></div></div></div>
+        <div class="seg-card"><span class="seg-dot" style="background:#475569"></span><div class="seg-name">Lost Customers</div><div class="seg-count" style="color:#94a3b8">623</div><div class="seg-aov">AOV $89 · 90+ days inactive</div><div class="seg-bar-track"><div class="seg-bar-fill" style="width:18%;background:#475569"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================
+       PAGE: MARKETING ANALYTICS
+  ====================================================== -->
+  <div class="page" id="page-marketing">
+    <div class="kpi-grid kpi-grid-4">
+      <div class="kpi-card c-purple">
+        <div class="kpi-top"><div class="kpi-icon">💸</div><span class="kpi-change up">↑ 8%</span></div>
+        <div class="kpi-val">$480K</div><div class="kpi-lbl">Total Ad Spend</div><div class="kpi-sub">Across all paid channels</div>
+      </div>
+      <div class="kpi-card c-teal">
+        <div class="kpi-top"><div class="kpi-icon">📈</div><span class="kpi-change up">↑ 1.4×</span></div>
+        <div class="kpi-val">5.93×</div><div class="kpi-lbl">Overall ROAS</div><div class="kpi-sub">$2.85M revenue / $480K spend</div>
+      </div>
+      <div class="kpi-card c-amber">
+        <div class="kpi-top"><div class="kpi-icon">🎯</div><span class="kpi-change down">↓ $8</span></div>
+        <div class="kpi-val">$54.93</div><div class="kpi-lbl">Blended CAC</div><div class="kpi-sub">Email best: $19.20</div>
+      </div>
+      <div class="kpi-card c-rose">
+        <div class="kpi-top"><div class="kpi-icon">📧</div><span class="kpi-change up">↑ 1.2pp</span></div>
+        <div class="kpi-val">5.9%</div><div class="kpi-lbl">Email Conv. Rate</div><div class="kpi-sub">Best-performing channel</div>
+      </div>
+    </div>
+
+    <div class="row c2">
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Revenue vs. Ad Spend by Channel</div><div class="ch-sub">Marketing ROI comparison</div></div>
+          <span class="ch-badge purple">5 Channels</span>
+        </div>
+        <div class="ch-wrap tall"><canvas id="c-ch-rev"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">ROAS by Channel</div><div class="ch-sub">Return on Ad Spend — higher is better</div></div>
+          <span class="ch-badge teal">Email Best: 17.5×</span>
+        </div>
+        <div class="ch-wrap tall"><canvas id="c-roas"></canvas></div>
+      </div>
+    </div>
+
+    <div class="row c2">
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Customer Acquisition Cost (CAC)</div><div class="ch-sub">Cost per acquired customer — lower is better</div></div>
+          <span class="ch-badge amber">Email: $19.20 Best</span>
+        </div>
+        <div class="ch-wrap"><canvas id="c-cac"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Conversion Rate by Channel</div><div class="ch-sub">% of visitors converted to customers</div></div>
+          <span class="ch-badge teal">Referral: 6.7% Best</span>
+        </div>
+        <div class="ch-wrap"><canvas id="c-convrate"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Campaign Table -->
+    <div class="chart-card">
+      <div class="ch-header">
+        <div><div class="ch-title">Campaign Performance Summary</div><div class="ch-sub">Revenue, orders, conversion rate, and ROAS per campaign · Jan–Sep 2024</div></div>
+        <span class="ch-badge purple">6 Campaigns</span>
+      </div>
+      <table class="dtable">
+        <thead><tr><th>#</th><th>Campaign</th><th>Revenue</th><th>Orders</th><th>Conv. Rate</th><th>ROAS</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--t3)">01</td><td>🏆 Loyalty Program</td><td style="color:var(--teal);font-weight:700">$827,000</td><td>4,300</td><td><span class="tbadge" style="background:rgba(6,214,160,.1);color:var(--teal)">6.2%</span></td><td style="font-weight:800;color:var(--teal)">18.2×</td><td><span class="tbadge" style="background:rgba(6,214,160,.1);color:var(--teal)">● Active</span></td></tr>
+          <tr><td style="color:var(--t3)">02</td><td>☀️ Summer Sale</td><td style="color:var(--teal);font-weight:700">$634,000</td><td>2,847</td><td><span class="tbadge" style="background:rgba(56,189,248,.1);color:var(--sky)">4.2%</span></td><td style="font-weight:800;color:var(--sky)">8.4×</td><td><span class="tbadge" style="background:rgba(245,158,11,.1);color:var(--amber)">● Ended</span></td></tr>
+          <tr><td style="color:var(--t3)">03</td><td>🖤 Black Friday</td><td style="color:var(--t1);font-weight:700">$589,000</td><td>2,134</td><td><span class="tbadge" style="background:rgba(139,92,246,.1);color:var(--purple-l)">5.8%</span></td><td style="font-weight:800;color:var(--purple-l)">7.2×</td><td><span class="tbadge" style="background:rgba(56,189,248,.1);color:var(--sky)">● Planned</span></td></tr>
+          <tr><td style="color:var(--t3)">04</td><td>🌸 Spring Launch</td><td>$312,000</td><td>1,456</td><td><span class="tbadge" style="background:rgba(245,158,11,.1);color:var(--amber)">3.1%</span></td><td>5.1×</td><td><span class="tbadge" style="background:rgba(245,158,11,.1);color:var(--amber)">● Ended</span></td></tr>
+          <tr><td style="color:var(--t3)">05</td><td>🎒 Back to School</td><td>$287,000</td><td>1,234</td><td><span class="tbadge" style="background:rgba(245,158,11,.1);color:var(--amber)">3.9%</span></td><td>6.8×</td><td><span class="tbadge" style="background:rgba(245,158,11,.1);color:var(--amber)">● Ended</span></td></tr>
+          <tr><td style="color:var(--t3)">06</td><td>🎉 New Year</td><td>$198,000</td><td>876</td><td><span class="tbadge" style="background:rgba(244,63,94,.1);color:var(--rose)">2.8%</span></td><td>4.9×</td><td><span class="tbadge" style="background:rgba(244,63,94,.1);color:var(--rose)">● Ended</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ======================================================
+       PAGE: CONVERSION FUNNEL
+  ====================================================== -->
+  <div class="page" id="page-funnel">
+    <div class="kpi-grid kpi-grid-4">
+      <div class="kpi-card c-purple">
+        <div class="kpi-top"><div class="kpi-icon">👁</div><span class="kpi-change up">↑ 31%</span></div>
+        <div class="kpi-val">338K</div><div class="kpi-lbl">Total Visitors</div>
+      </div>
+      <div class="kpi-card c-sky">
+        <div class="kpi-top"><div class="kpi-icon">🔍</div></div>
+        <div class="kpi-val">54.7%</div><div class="kpi-lbl">View Rate</div><div class="kpi-sub">Visitor → Product View</div>
+      </div>
+      <div class="kpi-card c-amber">
+        <div class="kpi-top"><div class="kpi-icon">🛒</div></div>
+        <div class="kpi-val">26.1%</div><div class="kpi-lbl">Add-to-Cart Rate</div><div class="kpi-sub">Product View → Cart</div>
+      </div>
+      <div class="kpi-card c-teal">
+        <div class="kpi-top"><div class="kpi-icon">✅</div></div>
+        <div class="kpi-val">3.8%</div><div class="kpi-lbl">Overall Conversion</div><div class="kpi-sub">Visitor → Purchase</div>
+      </div>
+    </div>
+
+    <div class="row c5-7">
+      <!-- Custom CSS Funnel -->
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Conversion Funnel</div><div class="ch-sub">Customer journey · stage-by-stage</div></div>
+          <span class="ch-badge purple">3.8% Overall</span>
+        </div>
+        <div id="funnelViz"></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Stage-by-Stage Conversion Rate</div><div class="ch-sub">Drop-off between funnel stages</div></div>
+          <span class="ch-badge rose">Biggest Drop: View→Cart</span>
+        </div>
+        <div class="ch-wrap tall"><canvas id="c-funnel-bar"></canvas></div>
+      </div>
+    </div>
+
+    <div class="row c2">
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Conversion Rate by Channel</div><div class="ch-sub">End-to-end funnel efficiency per channel</div></div>
+        </div>
+        <div class="ch-wrap"><canvas id="c-funnel-ch"></canvas></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Drop-Off Analysis & Opportunities</div><div class="ch-sub">User loss at each funnel stage</div></div>
+          <span class="ch-badge rose">73.9% Cart Abandonment</span>
+        </div>
+        <div style="padding:6px 0 0;">
+          <div class="pb-wrap">
+            <div class="pb-row"><span style="color:var(--t2)">Visitors → Product Views</span><span style="color:var(--amber);font-weight:700">45.3% lost</span></div>
+            <div class="pb-track"><div class="pb-fill" style="width:45%;background:var(--amber)"></div></div>
+          </div>
+          <div class="pb-wrap">
+            <div class="pb-row"><span style="color:var(--t2)">Product Views → Add to Cart</span><span style="color:var(--rose);font-weight:700">73.9% lost</span></div>
+            <div class="pb-track"><div class="pb-fill" style="width:74%;background:var(--rose)"></div></div>
+          </div>
+          <div class="pb-wrap">
+            <div class="pb-row"><span style="color:var(--t2)">Add to Cart → Checkout</span><span style="color:var(--orange);font-weight:700">61.8% lost</span></div>
+            <div class="pb-track"><div class="pb-fill" style="width:62%;background:var(--orange)"></div></div>
+          </div>
+          <div class="pb-wrap">
+            <div class="pb-row"><span style="color:var(--t2)">Checkout → Purchase</span><span style="color:var(--teal);font-weight:700">30.2% lost</span></div>
+            <div class="pb-track"><div class="pb-fill" style="width:30%;background:var(--teal)"></div></div>
+          </div>
+
+          <div class="divider">
+            <div class="divider-line"></div>
+            <span>Improvement Opportunities</span>
+            <div class="divider-line"></div>
+          </div>
+
+          <div class="stat-row">
+            <span class="stat-label">🛒 Reduce cart abandonment by 10%</span>
+            <span class="stat-value" style="color:var(--teal)">+$284K</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">📱 Mobile checkout optimization</span>
+            <span class="stat-value" style="color:var(--teal)">+1.2pp conv.</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">📧 3-email cart abandonment flow</span>
+            <span class="stat-value" style="color:var(--teal)">+$142K</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================
+       PAGE: RECOMMENDATIONS
+  ====================================================== -->
+  <div class="page" id="page-insights">
+    <div style="margin-bottom:22px;">
+      <div style="font-size:22px;font-weight:900;margin-bottom:6px;">💡 Data-Driven Recommendations</div>
+      <div style="font-size:13px;color:var(--t2)">Strategic insights from 12,847 transactions · 8,742 customers · 5 channels · Jan–Sep 2024</div>
+    </div>
+
+    <div class="ins-grid">
+      <div class="ins-card" style="border-color:rgba(6,214,160,0.22)">
+        <div class="ins-num" style="background:rgba(6,214,160,.1);border-color:rgba(6,214,160,.25);color:var(--teal)">01</div>
+        <div class="ins-title">🏆 Scale the Loyalty Program</div>
+        <div class="ins-text">Loyalty Program delivers the highest ROAS (18.2×) and conversion rate (6.2%) of all campaigns. Champions segment (1,245 customers) averages $387 AOV — 75% above store average. Recommend a 40% budget increase and tiered VIP tiers to graduate Loyal → Champion customers.</div>
+        <div class="ins-impact">✦ Projected Revenue Impact: +$234K</div>
+      </div>
+      <div class="ins-card" style="border-color:rgba(139,92,246,0.22)">
+        <div class="ins-num">02</div>
+        <div class="ins-title">📧 Double Down on Email Marketing</div>
+        <div class="ins-text">Email delivers a 17.5× ROAS with the lowest CAC at $19.20 — 3.8× cheaper than Google Ads ($73.80). Email conversion rate of 5.9% outperforms all paid channels. Build RFM-based drip sequences targeting each customer segment with personalized offers.</div>
+        <div class="ins-impact">✦ Projected Revenue Impact: +$189K at same spend</div>
+      </div>
+      <div class="ins-card" style="border-color:rgba(244,63,94,0.22)">
+        <div class="ins-num" style="background:rgba(244,63,94,.1);border-color:rgba(244,63,94,.25);color:var(--rose)">03</div>
+        <div class="ins-title">🛒 Fix the Cart Abandonment Crisis</div>
+        <div class="ins-text">73.9% of shoppers abandon after adding to cart — the largest funnel drop-off. Implement a 3-email abandonment flow (1hr, 24hr, 72hr) with a 10% incentive trigger. Add trust signals, one-click checkout, and mobile-optimized UX (67% of traffic is mobile).</div>
+        <div class="ins-impact">✦ Projected Revenue Impact: +$284K recovered</div>
+      </div>
+      <div class="ins-card" style="border-color:rgba(245,158,11,0.22)">
+        <div class="ins-num" style="background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.25);color:var(--amber)">04</div>
+        <div class="ins-title">⚠️ Re-engage At-Risk Customers</div>
+        <div class="ins-text">987 customers are classified At-Risk with declining purchase frequency (current AOV: $134, down from $198). Launch a personalized win-back campaign with product recommendations based on past behavior. A 30% win-back rate at $165 AOV generates significant incremental value.</div>
+        <div class="ins-impact">✦ Projected Revenue Impact: +$48K</div>
+      </div>
+      <div class="ins-card" style="border-color:rgba(56,189,248,0.22)">
+        <div class="ins-num" style="background:rgba(56,189,248,.1);border-color:rgba(56,189,248,.25);color:var(--sky)">05</div>
+        <div class="ins-title">🔗 Launch a Formal Referral Program</div>
+        <div class="ins-text">Referral channel converts at 6.7% (highest of all channels) with a 14.6× ROAS — yet receives only $12K spend. Referral customers tend to be higher quality. Launch a structured referral program with rewards for both referrer and new customer to scale this organically.</div>
+        <div class="ins-impact">✦ Projected Revenue Impact: +$156K</div>
+      </div>
+      <div class="ins-card" style="border-color:rgba(139,92,246,0.22)">
+        <div class="ins-num">06</div>
+        <div class="ins-title">📊 Rebalance Google Ads Budget</div>
+        <div class="ins-text">Google Ads generates $847K revenue but at 4.03× ROAS and $73.80 CAC — the weakest paid efficiency. Shift 15% of Google Ads budget to Email and Organic SEO. Keep Google Ads focused on branded keywords and retargeting, which typically achieve 3× higher ROAS.</div>
+        <div class="ins-impact">✦ Projected Revenue Impact: +$73K efficiency gain</div>
+      </div>
+    </div>
+
+    <div class="row c2">
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Channel Efficiency Matrix</div><div class="ch-sub">ROAS vs CAC · bubble size = revenue generated</div></div>
+        </div>
+        <div class="ch-wrap"><canvas id="c-bubble"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="ch-header">
+          <div><div class="ch-title">Projected Revenue Uplift</div><div class="ch-sub">Incremental revenue from implementing all 6 recommendations</div></div>
+          <span class="ch-badge teal">+$984K Opportunity</span>
+        </div>
+        <div style="padding:4px 0;">
+          <div class="stat-row"><span class="stat-label">01 — Scale Loyalty Program</span><span class="stat-value" style="color:var(--teal)">+$234K</span></div>
+          <div class="stat-row"><span class="stat-label">02 — Email Marketing Expansion</span><span class="stat-value" style="color:var(--teal)">+$189K</span></div>
+          <div class="stat-row"><span class="stat-label">03 — Cart Abandonment Recovery</span><span class="stat-value" style="color:var(--teal)">+$284K</span></div>
+          <div class="stat-row"><span class="stat-label">04 — At-Risk Win-back Campaign</span><span class="stat-value" style="color:var(--amber)">+$48K</span></div>
+          <div class="stat-row"><span class="stat-label">05 — Referral Program Launch</span><span class="stat-value" style="color:var(--teal)">+$156K</span></div>
+          <div class="stat-row"><span class="stat-label">06 — Google Ads Rebalance</span><span class="stat-value" style="color:var(--sky)">+$73K</span></div>
+          <div style="border-top:1px solid var(--border-p);margin-top:12px;padding-top:16px;" class="stat-row">
+            <span class="stat-label" style="font-weight:800;color:var(--t1);font-size:14px">Total Projected Uplift</span>
+            <span class="stat-value" style="font-size:22px;font-weight:900;color:var(--teal)">+$984K</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+/* ================================================================
+   DATA
+================================================================ */
+const D = {
+  monthly: {
+    labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep'],
+    revenue:  [187423,234156,298743,312089,287654,341234,378923,423156,384014],
+    orders:   [846,1056,1347,1408,1297,1539,1709,1908,1737],
+    aov:      [183,197,209,218,204,226,234,238,221],
+  },
+  channels: {
+    labels:   ['Google Ads','Social Media','Organic Search','Email Marketing','Referral'],
+    revenue:  [847234,623456,712089,489234,175379],
+    spend:    [210000,185000,45000,28000,12000],
+    roas:     [4.03,3.37,15.82,17.47,14.61],
+    cac:      [73.8,96.2,21.1,19.2,31.4],
+    convRate: [4.2,3.4,4.8,5.9,6.7],
+  },
+  segments: {
+    labels: ['Champions','Loyal','Potential','New','At-Risk','Lost'],
+    aov:    [387,245,178,156,134,89],
+  },
+  categories: {
+    labels:  ['Electronics','Clothing','Home & Garden','Sports','Beauty'],
+    revenue: [912300,634200,487100,423800,389992],
+  },
+  funnel: {
+    stages: ['Visitors','Product Views','Add to Cart','Checkout','Purchase'],
+    values: [338000,185000,48200,18400,12847],
+    colors: ['#8b5cf6','#38bdf8','#f59e0b','#f97316','#06d6a0'],
+  },
+  freq: {
+    labels: ['1 Order','2 Orders','3–4 Orders','5–7 Orders','8+ Orders'],
+    values: [2987,2134,1876,1123,622],
+  },
+};
+
+/* ================================================================
+   CHART REGISTRY
+================================================================ */
+const CReg = {};
+function destroyC(id){ if(CReg[id]){ CReg[id].destroy(); delete CReg[id]; } }
+function mkChart(id, cfg){ destroyC(id); const ctx=document.getElementById(id).getContext('2d'); CReg[id]=new Chart(ctx,cfg); return CReg[id]; }
+
+/* Global Chart defaults */
+Chart.defaults.color='#94a3b8';
+Chart.defaults.borderColor='rgba(255,255,255,0.06)';
+Chart.defaults.font.family='Inter';
+Chart.defaults.font.size=12;
+
+const P = { purple:'#8b5cf6', purpleL:'#a78bfa', cyan:'#22d3ee', teal:'#06d6a0', amber:'#f59e0b', rose:'#f43f5e', sky:'#38bdf8', orange:'#f97316' };
+const CHCOL = ['#8b5cf6','#38bdf8','#06d6a0','#f59e0b','#f43f5e'];
+
+const TT = { backgroundColor:'#0c1028', borderColor:'rgba(139,92,246,0.3)', borderWidth:1, padding:12 };
+
+/* ================================================================
+   OVERVIEW CHARTS
+================================================================ */
+function initOverview(){
+  /* Revenue + Orders line */
+  const rCtx = document.getElementById('c-revenue').getContext('2d');
+  const rGrad = rCtx.createLinearGradient(0,0,0,260);
+  rGrad.addColorStop(0,'rgba(139,92,246,0.28)'); rGrad.addColorStop(1,'rgba(139,92,246,0)');
+  mkChart('c-revenue',{
+    type:'line',
+    data:{
+      labels: D.monthly.labels,
+      datasets:[
+        { label:'Revenue ($)', data:D.monthly.revenue, borderColor:P.purple, backgroundColor:rGrad, borderWidth:2.5, fill:true, tension:.4, pointBackgroundColor:P.purple, pointRadius:4, pointHoverRadius:7, yAxisID:'y' },
+        { label:'Orders', data:D.monthly.orders, borderColor:P.teal, backgroundColor:'transparent', borderWidth:2, borderDash:[5,3], tension:.4, pointBackgroundColor:P.teal, pointRadius:3, pointHoverRadius:6, yAxisID:'y1' }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{ legend:{labels:{boxWidth:10,padding:14}}, tooltip:{...TT, callbacks:{label:c=>c.datasetIndex===0?` Revenue: $${(c.raw/1000).toFixed(1)}K`:` Orders: ${c.raw.toLocaleString()}`}} },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{position:'left', grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>`$${(v/1000).toFixed(0)}K`}},
+        y1:{position:'right', grid:{display:false}, ticks:{callback:v=>v.toLocaleString()}}
+      }
+    }
+  });
+
+  /* Channel donut */
+  mkChart('c-channel-donut',{
+    type:'doughnut',
+    data:{
+      labels: D.channels.labels,
+      datasets:[{ data:D.channels.revenue, backgroundColor:CHCOL, borderColor:'#101530', borderWidth:3, hoverOffset:10 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'68%',
+      plugins:{
+        legend:{position:'right', labels:{boxWidth:9,padding:11,font:{size:11}}},
+        tooltip:{...TT, callbacks:{label:c=>` $${(c.raw/1000).toFixed(0)}K (${((c.raw/2847392)*100).toFixed(1)}%)`}}
+      }
+    }
+  });
+
+  /* Category bar */
+  mkChart('c-category',{
+    type:'bar',
+    data:{
+      labels: D.categories.labels,
+      datasets:[{ label:'Revenue', data:D.categories.revenue, backgroundColor:[P.purple,P.sky,P.teal,P.amber,P.rose], borderRadius:7, borderSkipped:false }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{...TT, callbacks:{label:c=>` $${(c.raw/1000).toFixed(1)}K`}}},
+      scales:{
+        x:{grid:{display:false}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>`$${(v/1000).toFixed(0)}K`}}
+      }
+    }
+  });
+}
+
+/* ================================================================
+   CUSTOMER CHARTS
+================================================================ */
+function initCustomer(){
+  /* New vs Returning */
+  mkChart('c-nvr',{
+    type:'doughnut',
+    data:{
+      labels:['Returning Customers','New Customers'],
+      datasets:[{ data:[5600,3142], backgroundColor:[P.purple,P.teal], borderColor:'#101530', borderWidth:3, hoverOffset:10 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'70%',
+      plugins:{
+        legend:{position:'bottom', labels:{boxWidth:9,padding:14}},
+        tooltip:{...TT, callbacks:{label:c=>` ${c.raw.toLocaleString()} (${((c.raw/8742)*100).toFixed(1)}%)`}}
+      }
+    }
+  });
+
+  /* Frequency */
+  const fCtx=document.getElementById('c-freq').getContext('2d');
+  const fGrad=fCtx.createLinearGradient(0,0,0,260);
+  fGrad.addColorStop(0,'rgba(139,92,246,0.75)'); fGrad.addColorStop(1,'rgba(139,92,246,0.15)');
+  mkChart('c-freq',{
+    type:'bar',
+    data:{ labels:D.freq.labels, datasets:[{ label:'Customers', data:D.freq.values, backgroundColor:fGrad, borderRadius:7, borderSkipped:false }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{...TT}},
+      scales:{ x:{grid:{display:false}}, y:{grid:{color:'rgba(255,255,255,0.04)'}} }
+    }
+  });
+
+  /* AOV trend */
+  const aCtx=document.getElementById('c-aov').getContext('2d');
+  const aGrad=aCtx.createLinearGradient(0,0,0,260);
+  aGrad.addColorStop(0,'rgba(245,158,11,0.28)'); aGrad.addColorStop(1,'rgba(245,158,11,0)');
+  mkChart('c-aov',{
+    type:'line',
+    data:{
+      labels:D.monthly.labels,
+      datasets:[{ label:'AOV ($)', data:D.monthly.aov, borderColor:P.amber, backgroundColor:aGrad, borderWidth:2.5, fill:true, tension:.4, pointBackgroundColor:P.amber, pointRadius:5, pointHoverRadius:8 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{...TT, callbacks:{label:c=>` AOV: $${c.raw}`}}},
+      scales:{
+        x:{grid:{display:false}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>`$${v}`}, min:170, max:255}
+      }
+    }
+  });
+
+  /* Segment AOV */
+  mkChart('c-seg-aov',{
+    type:'bar',
+    data:{
+      labels:D.segments.labels,
+      datasets:[{ label:'AOV ($)', data:D.segments.aov, backgroundColor:[P.purple,P.teal,P.sky,P.amber,P.rose,'#475569'], borderRadius:7, borderSkipped:false }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{legend:{display:false}, tooltip:{...TT, callbacks:{label:c=>` AOV: $${c.raw}`}}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>`$${v}`}},
+        y:{grid:{display:false}}
+      }
+    }
+  });
+}
+
+/* ================================================================
+   MARKETING CHARTS
+================================================================ */
+function initMarketing(){
+  /* Revenue vs Spend grouped bar */
+  mkChart('c-ch-rev',{
+    type:'bar',
+    data:{
+      labels:D.channels.labels,
+      datasets:[
+        { label:'Revenue', data:D.channels.revenue, backgroundColor:'rgba(139,92,246,0.8)', borderRadius:5, borderSkipped:false },
+        { label:'Ad Spend', data:D.channels.spend, backgroundColor:'rgba(244,63,94,0.7)', borderRadius:5, borderSkipped:false }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{boxWidth:9,padding:14}}, tooltip:{...TT, callbacks:{label:c=>` ${c.dataset.label}: $${(c.raw/1000).toFixed(0)}K`}}},
+      scales:{
+        x:{grid:{display:false}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>`$${(v/1000).toFixed(0)}K`}}
+      }
+    }
+  });
+
+  /* ROAS horizontal */
+  mkChart('c-roas',{
+    type:'bar',
+    data:{
+      labels:D.channels.labels,
+      datasets:[{ label:'ROAS', data:D.channels.roas, backgroundColor:D.channels.roas.map(v=>v>=10?P.teal:v>=6?P.amber:P.rose), borderRadius:7, borderSkipped:false }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{legend:{display:false}, tooltip:{...TT, callbacks:{label:c=>` ROAS: ${c.raw}×`}}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>`${v}×`}},
+        y:{grid:{display:false}}
+      }
+    }
+  });
+
+  /* CAC */
+  mkChart('c-cac',{
+    type:'bar',
+    data:{
+      labels:D.channels.labels,
+      datasets:[{ label:'CAC ($)', data:D.channels.cac, backgroundColor:D.channels.cac.map(v=>v>50?P.rose:v>30?P.amber:P.teal), borderRadius:7, borderSkipped:false }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{...TT, callbacks:{label:c=>` CAC: $${c.raw}`}}},
+      scales:{
+        x:{grid:{display:false}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>`$${v}`}}
+      }
+    }
+  });
+
+  /* Conv Rate */
+  mkChart('c-convrate',{
+    type:'bar',
+    data:{
+      labels:D.channels.labels,
+      datasets:[{ label:'Conv. Rate (%)', data:D.channels.convRate, backgroundColor:CHCOL, borderRadius:7, borderSkipped:false }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{...TT, callbacks:{label:c=>` Conv: ${c.raw}%`}}},
+      scales:{
+        x:{grid:{display:false}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>`${v}%`}}
+      }
+    }
+  });
+}
+
+/* ================================================================
+   FUNNEL
+================================================================ */
+function buildFunnelViz(){
+  const el=document.getElementById('funnelViz');
+  el.innerHTML='';
+  const {stages,values,colors}=D.funnel;
+  stages.forEach((s,i)=>{
+    const pct=(values[i]/values[0]*100).toFixed(1);
+    const convPrev=i===0?null:((values[i]/values[i-1])*100).toFixed(1);
+    const barW=Math.max((values[i]/values[0])*100,22);
+
+    const stage=document.createElement('div');
+    stage.className='f-stage';
+    stage.innerHTML=`
+      <div class="f-meta">
+        <div class="f-val">${values[i].toLocaleString()}</div>
+        <div class="f-lbl">${s}</div>
+      </div>
+      <div class="f-bar-wrap">
+        <div class="f-bar" style="width:${barW}%;background:linear-gradient(135deg,${colors[i]},${colors[i]}bb)">
+          <span class="f-bar-text">${pct}%</span>
+        </div>
+        ${i<stages.length-1?'<div class="f-connector"></div>':''}
+      </div>
+      <div class="f-meta-r">
+        ${i>0?`<div class="f-conv" style="color:${parseFloat(convPrev)>50?P.teal:P.rose}">${convPrev}% from prev</div>`:''}
+      </div>`;
+    el.appendChild(stage);
+  });
+}
+
+function initFunnel(){
+  buildFunnelViz();
+
+  mkChart('c-funnel-bar',{
+    type:'bar',
+    data:{
+      labels:['Visitor → View','View → Cart','Cart → Checkout','Checkout → Purchase'],
+      datasets:[{ label:'Stage Conv. (%)', data:[54.7,26.1,38.2,69.8], backgroundColor:[P.teal,P.rose,P.amber,P.teal], borderRadius:7, borderSkipped:false }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{legend:{display:false}, tooltip:{...TT, callbacks:{label:c=>` ${c.raw}%`}}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>`${v}%`}, max:100},
+        y:{grid:{display:false}}
+      }
+    }
+  });
+
+  mkChart('c-funnel-ch',{
+    type:'bar',
+    data:{
+      labels:D.channels.labels,
+      datasets:[{ label:'Conv. Rate', data:D.channels.convRate, backgroundColor:CHCOL, borderRadius:7, borderSkipped:false }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{legend:{display:false}, tooltip:{...TT, callbacks:{label:c=>` ${c.raw}%`}}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>`${v}%`}},
+        y:{grid:{display:false}}
+      }
+    }
+  });
+}
+
+/* ================================================================
+   INSIGHTS
+================================================================ */
+function initInsights(){
+  mkChart('c-bubble',{
+    type:'bubble',
+    data:{
+      datasets: D.channels.labels.map((lbl,i)=>({
+        label:lbl,
+        data:[{ x:D.channels.cac[i], y:D.channels.roas[i], r:Math.sqrt(D.channels.revenue[i]/1000)*0.38 }],
+        backgroundColor:CHCOL[i]+'88',
+        borderColor:CHCOL[i],
+        borderWidth:2
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{boxWidth:9,padding:12,font:{size:11}}},
+        tooltip:{...TT, callbacks:{label:c=>[` ${c.dataset.label}`,` CAC: $${c.raw.x}`,` ROAS: ${c.raw.y}×`]}}
+      },
+      scales:{
+        x:{title:{display:true,text:'CAC ($) — Lower is better',color:'#94a3b8'}, grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>`$${v}`}},
+        y:{title:{display:true,text:'ROAS — Higher is better',color:'#94a3b8'}, grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>`${v}×`}}
+      }
+    }
+  });
+}
+
+/* ================================================================
+   NAVIGATION
+================================================================ */
+const PAGE_META = {
+  overview:  { title:'Business Overview',          sub:'E-commerce performance across all channels · Jan–Sep 2024' },
+  customer:  { title:'Customer Analytics',          sub:'Behavioral analysis of 8,742 customers · RFM Segmentation' },
+  marketing: { title:'Marketing Analytics',         sub:'Channel performance, ROAS, CAC & campaign analysis · 5 channels' },
+  funnel:    { title:'Conversion Funnel',           sub:'Customer journey from visitor to purchase · 338K visitors analyzed' },
+  insights:  { title:'Strategic Recommendations',   sub:'Data-driven insights to unlock +$984K in additional annual revenue' },
+};
+
+function navigate(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.getElementById('nav-'+page).classList.add('active');
+  const m=PAGE_META[page];
+  document.getElementById('pageTitle').textContent=m.title;
+  document.getElementById('pageSub').textContent=m.sub;
+  if(page==='overview')  initOverview();
+  if(page==='customer')  initCustomer();
+  if(page==='marketing') initMarketing();
+  if(page==='funnel')    initFunnel();
+  if(page==='insights')  initInsights();
+}
+
+/* ================================================================
+   COUNTER ANIMATION
+================================================================ */
+function counter(el, endVal, duration, prefix='', suffix='', decimals=0){
+  const start=performance.now();
+  const fmt=n=>decimals>0?n.toFixed(decimals):Math.floor(n).toLocaleString();
+  const step=t=>{
+    const p=Math.min((t-start)/duration,1);
+    const ease=1-Math.pow(1-p,3);
+    el.textContent=prefix+fmt(endVal*ease)+suffix;
+    if(p<1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function animateKPIs(){
+  counter(document.getElementById('kv-revenue'), 2.847, 1800, '$', 'M', 2);
+  counter(document.getElementById('kv-customers'), 8742, 1700, '', '', 0);
+  counter(document.getElementById('kv-orders'), 12847, 1700, '', '', 0);
+  counter(document.getElementById('kv-aov'), 221.64, 1600, '$', '', 2);
+  counter(document.getElementById('kv-conv'), 3.8, 1500, '', '%', 1);
+  counter(document.getElementById('kv-retention'), 64.2, 1600, '', '%', 1);
+}
+
+/* ================================================================
+   FILTER / EXPORT
+================================================================ */
+function setFilter(btn){
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function exportReport(){
+  const btn=document.querySelector('.export-btn');
+  const orig=btn.textContent;
+  btn.textContent='✓ Report Ready!';
+  btn.style.background='linear-gradient(135deg,#06d6a0,#0ea5e9)';
+  setTimeout(()=>{ btn.textContent=orig; btn.style.background=''; },2200);
+}
+
+/* ================================================================
+   INIT
+================================================================ */
+window.addEventListener('load',()=>{
+  setTimeout(()=>{ const lb=document.getElementById('loadingBar'); if(lb) lb.style.opacity='0'; setTimeout(()=>lb&&lb.remove(),400); },900);
+  animateKPIs();
+  initOverview();
+});
+</script>
+</body>
+</html>
